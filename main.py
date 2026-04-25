@@ -1,83 +1,91 @@
 import flet as ft
 
-# كلاس يمثل الرسالة (الاسم والرسالة والنوع)
-class Message():
-    def __init__(self, user_name: str, text: str, message_type: str):
-        self.user_name = user_name
+# كلاس الرسالة لترتيب البيانات
+class Message:
+    def __init__(self, user: str, text: str, type: str):
+        self.user = user
         self.text = text
-        self.message_type = message_type
+        self.type = type
 
 def main(page: ft.Page):
-    page.title = "دردشة تك - Chat Tech"
-    page.theme_mode = ft.ThemeMode.LIGHT
-    page.rtl = True  # لدعم اللغة العربية من اليمين لليسار
-
-    # دالة لاستلام الرسائل وتحديث الواجهة
+    page.title = "دردشة تك | Chat Tech"
+    page.rtl = True # دعم اللغة العربية
+    page.theme_mode = ft.ThemeMode.DARK # وضع ليلي فخم
+    page.bgcolor = "#1a1a1a"
+    
+    # دالة تحديث الرسائل لكل المستخدمين
     def on_message(msg: Message):
-        if msg.message_type == "chat_message":
-            chat_messages.controls.append(ft.Text(f"{msg.user_name}: {msg.text}"))
-        elif msg.message_type == "login_message":
-            chat_messages.controls.append(
-                ft.Text(msg.text, italic=True, color=ft.colors.GREY_400, size=12)
+        if msg.type == "chat":
+            chat_list.controls.append(
+                ft.Row([
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Text(msg.user, weight="bold", color="#00ffcc", size=12),
+                            ft.Text(msg.text, color="white", selectable=True),
+                        ], spacing=2),
+                        bgcolor="#2d2d2d",
+                        padding=10,
+                        border_radius=15,
+                        width=250,
+                    )
+                ])
+            )
+        else:
+            chat_list.controls.append(
+                ft.Text(msg.text, italic=True, color="grey", size=12, text_align="center")
             )
         page.update()
 
-    # الاشتراك في نظام البث التلقائي (PubSub)
     page.pubsub.subscribe(on_message)
 
-    # قائمة الرسائل
-    chat_messages = ft.Column()
+    chat_list = ft.Column(expand=True, scroll=ft.ScrollMode.ALWAYS, spacing=10)
 
-    # حقل إدخال الرسالة
-    new_message = ft.TextField(
+    # حقل الإرسال
+    msg_input = ft.TextField(
         hint_text="اكتب رسالتك هنا...",
-        autofocus=True,
-        shift_enter=True,
         expand=True,
-        on_submit=lambda e: send_message_click(e)
+        border_radius=20,
+        on_submit=lambda _: send_click(None)
     )
 
-    def send_message_click(e):
-        if new_message.value != "":
-            page.pubsub.send_all(Message(page.session.get("user_name"), new_message.value, "chat_message"))
-            new_message.value = ""
-            new_message.focus()
+    def send_click(e):
+        if msg_input.value:
+            page.pubsub.send_all(Message(page.session.get("username"), msg_input.value, "chat"))
+            msg_input.value = ""
             page.update()
 
-    # حوار تسجيل الدخول
-    user_name_field = ft.TextField(label="أدخل اسمك المستعار")
+    # شاشة الدخول
+    name_input = ft.TextField(label="اسم المستخدم", border_radius=10)
 
-    def join_chat_click(e):
-        if not user_name_field.value:
-            user_name_field.error_text = "الاسم مطلوب!"
-            page.update()
-        else:
-            page.session.set("user_name", user_name_field.value)
+    def join_click(e):
+        if name_input.value:
+            page.session.set("username", name_input.value)
             page.dialog.open = False
-            page.pubsub.send_all(Message(user_name_field.value, f"انضم {user_name_field.value} إلى الدردشة", "login_message"))
+            page.pubsub.send_all(Message(name_input.value, f"🔥 {name_input.value} انضم للدردشة الآن", "info"))
+            
             page.add(
-                ft.Column(
-                    [
-                        ft.Container(
-                            content=chat_messages,
-                            height=500,
-                            expand=True,
-                            scroll=ft.ScrollMode.ALWAYS,
-                        ),
-                        ft.Row([new_message, ft.IconButton(icon=ft.icons.SEND, on_click=send_message_click)])
-                    ],
-                    expand=True
+                ft.AppBar(title=ft.Text("دردشة تك"), center_title=True, bgcolor="#2d2d2d"),
+                ft.Container(
+                    content=chat_list,
+                    expand=True,
+                    padding=20,
+                ),
+                ft.Container(
+                    content=ft.Row([msg_input, ft.IconButton(ft.icons.SEND_ROUNDED, on_click=send_click, icon_color="#00ffcc")]),
+                    padding=10,
+                    bgcolor="#2d2d2d"
                 )
             )
             page.update()
 
     page.dialog = ft.AlertDialog(
-        title=ft.Text("مرحباً بك في دردشة تك"),
-        content=user_name_field,
-        actions=[ft.ElevatedButton("دخول", on_click=join_chat_click)],
-        modal=True,
+        title=ft.Text("سجل دخولك في دردشة تك"),
+        content=name_input,
+        actions=[ft.ElevatedButton("دخول", on_click=join_click)],
+        modal=True
     )
     page.dialog.open = True
     page.update()
 
-ft.app(target=main)
+# تشغيل التطبيق بوضعية الويب
+ft.app(target=main, view=ft.AppView.WEB_BROWSER)
